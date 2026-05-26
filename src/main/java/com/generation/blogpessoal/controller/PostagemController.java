@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.generation.blogpessoal.model.Postagem;
 import com.generation.blogpessoal.repository.PostagemRepository;
+import com.generation.blogpessoal.repository.TemaRepository;
 
 import jakarta.validation.Valid;
 
@@ -35,6 +36,9 @@ public class PostagemController {
 				// realizar algo sem depender de outra classe) (autoriza a spring utilizar a
 				// POO)
 	private PostagemRepository postagemRepository;
+
+	@Autowired
+	private TemaRepository temaRepository;
 
 	@GetMapping // Todas as requisições do tipo GET vão ser executadas por esse método quem
 				// executa é o proprio Spring
@@ -57,29 +61,43 @@ public class PostagemController {
 
 	@PostMapping
 	public ResponseEntity<Postagem> post(@Valid @RequestBody Postagem postagem) {
-
-		postagem.setId(null);
+		
+		if (temaRepository.existsById(postagem.getTema().getId())) {
+			
+	     postagem.setId(null);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(postagemRepository.save(postagem));
+		
+		} 
+		
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tema não existe!", null);
 	}
 
 	@PutMapping
-	public ResponseEntity<Postagem> put(@Valid @RequestBody Postagem postagem) {
-		return postagemRepository.findById(postagem.getId())
-				.map(resposta -> ResponseEntity.status(HttpStatus.OK).body(postagemRepository.save(postagem)))
-				.orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+	public ResponseEntity<Postagem> put(@Valid @RequestBody Postagem postagem){
+	    if (postagemRepository.existsById(postagem.getId())){
+
+	        if (temaRepository.existsById(postagem.getTema().getId()))
+	            return ResponseEntity.status(HttpStatus.OK)
+	                    .body(postagemRepository.save(postagem));
+
+	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tema não existe!", null);
+
+	    }
+
+	    return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 
 	}
-	
+
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	@DeleteMapping("/{id}")
 	public void delete(@PathVariable Long id) {
 		Optional<Postagem> postagem = postagemRepository.findById(id);
-		
-		if(postagem.isEmpty())
+
+		if (postagem.isEmpty())
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-		
-		postagemRepository.deleteById(id);				
+
+		postagemRepository.deleteById(id);
 	}
 
 }
